@@ -2,7 +2,7 @@ module Aluno (mainAluno, AlunoInfo, alunoTemId, carregarAlunos) where
 
 import Data.List.Split (splitOn)
 import System.IO
-import Data.List (any)
+import Data.List (any, intercalate)
 import Data.Char (isSpace)
 
 type IdAluno = Int
@@ -31,10 +31,10 @@ carregarAlunos = do
   where
     parseAluno :: String -> AlunoInfo
     parseAluno linha =
-      case splitOn " " linha of
+      case splitOn ", " (trimQuotes linha) of
         [_, idStr, nome, curso, numMatStr] ->
           let id = read idStr :: IdAluno
-              numMat = read numMatStr :: NumMat
+              numMat = read (trimQuotes numMatStr) :: NumMat
           in Aluno id (removerAspas nome) (removerAspas curso) numMat
         _ -> error "Formato inválido de entrada"
 
@@ -108,12 +108,13 @@ removerAluno codigo alunos = do
 exibirAlunos :: [AlunoInfo] -> IO ()
 exibirAlunos [] = putStrLn "Nenhum aluno adicionado."
 exibirAlunos alunos = do
+  putStrLn "Exibindo todos os alunos:"
   let alunosInvertidos = reverse alunos
   mapM_ (putStrLn . formatAluno) alunosInvertidos
 
 formatAluno :: AlunoInfo -> String
 formatAluno (Aluno id nome curso numMat) =
-  "ID: " ++ show id ++ ", Nome: " ++ trimQuotes nome ++ ", Curso: " ++ trimQuotes curso ++ ", Número da matrícula: " ++ show numMat
+  "ID Aluno: " ++ show id ++ ", Nome: " ++ nome ++ ", Curso: " ++ curso ++ ", Numero da matricula: " ++ show numMat
 
 trimQuotes :: String -> String
 trimQuotes = filter (not . isQuote)
@@ -130,15 +131,19 @@ salvarAlunos :: [AlunoInfo] -> IO ()
 salvarAlunos alunos = do
     let nomeArquivo = "alunos.txt"
     withFile nomeArquivo WriteMode $ \arquivo -> do
-        mapM_ (hPrint arquivo) alunos
+        mapM_ (hPrint arquivo . formattAluno) alunos
     putStrLn $ "Alunos salvos com sucesso no arquivo: " ++ nomeArquivo
+
+formattAluno :: AlunoInfo -> String
+formattAluno (Aluno id nome curso mat) =
+    intercalate ", " ["Aluno", show id, nome, curso, show mat]    
 
 loopPrincipal :: [AlunoInfo] -> IO ()
 loopPrincipal alunos = do
     putStrLn ""
     putStrLn "Para interagir com as funcionalidades relacionadas aos alunos, escolha uma das opções abaixo:"
     putStrLn "(1) - Para adicionar um ou mais alunos."
-    putStrLn "(2) - Para remover um ou mais alunos."
+    putStrLn "(2) - Para remover um alunos."
     putStrLn "(3) - Para exibir todos os alunos."
     putStrLn "(4) - Para salvar a lista de alunos em um arquivo."
     putStrLn "Sair - Qualquer tecla que não seja uma opção."

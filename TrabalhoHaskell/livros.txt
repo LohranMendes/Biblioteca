@@ -1,1 +1,3 @@
-Livro 1 "Coroa do Rei" "Lohran Mendes" "Imperium" 2023
+"Livro, 3, A Viagem ao Centro da Terra, Julio Verne, Imperium, 2023"
+"Livro, 2, Pequeno Principe, Antoine de Saint-Exupery, Companhia das Letras, 1943"
+"Livro, 1, Coroa do Rei, Lohran Mendes, Imperium, 2023"

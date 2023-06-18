@@ -2,7 +2,7 @@ module Livro (mainLivro, LivroInfo, livroTemCodigo, carregarLivros) where
 
 import Data.List.Split (splitOn)
 import System.IO
-import Data.List (any)
+import Data.List (any, intercalate)
 import Data.Char (isSpace)
 import System.Directory (doesFileExist)
 
@@ -40,12 +40,19 @@ carregarLivros = do
   where
     parseLivro :: String -> LivroInfo
     parseLivro linha =
-        case splitOn " " linha of
+        case splitOn ", " (trimQuotes linha) of
             [_, codigoStr, titulo, autor, editora, anoPubliStr] ->
                 let codigo = read codigoStr :: Codigo
-                    anoPubli = read anoPubliStr :: AnoPublicacao
-                in Livro codigo titulo autor editora anoPubli
+                    anoPubli = read (trimQuotes anoPubliStr) :: AnoPublicacao
+                in Livro codigo (removerAspas titulo) (removerAspas autor) (removerAspas editora) anoPubli
             _ -> error "Formato inválido de entrada"
+
+removerAspas :: String -> String
+removerAspas str = filter (\c -> c /= '\"' && c /= '\\') str
+
+trimQuotes :: String -> String
+trimQuotes = filter (not . isQuote)
+  where isQuote c = c == '"' || c == '\\'
 
 livroTemCodigo :: Codigo -> LivroInfo -> Bool
 livroTemCodigo cod (Livro codigo _ _ _ _) = cod == codigo
@@ -114,26 +121,31 @@ exibirLivros :: [LivroInfo] -> IO ()
 exibirLivros [] = putStrLn "Nenhum livro adicionado."
 exibirLivros livros = do
     putStrLn "Exibindo todos os livros:"
-    mapM_ (putStrLn . formatLivro) livros
+    let livrosInvertidos = reverse livros
+    mapM_ (putStrLn . formatLivro) livrosInvertidos
 
 formatLivro :: LivroInfo -> String
 formatLivro (Livro cod tit aut edt anoPubli) =
-    "Livro " ++ show cod ++ " " ++ tit ++ " " ++ aut ++ " " ++ edt ++ " " ++ show anoPubli
+    "ID Livro: " ++ show cod ++ ", Titulo: " ++ tit ++ ", Autor(es): " ++ aut ++ ", Editora: " ++ edt ++ ", Ano: " ++ show anoPubli
 
 -- Função para salvar a lista de livros em um arquivo
 salvarLivros :: [LivroInfo] -> IO ()
 salvarLivros livros = do
     let nomeArquivo = "livros.txt"
     withFile nomeArquivo WriteMode $ \arquivo -> do
-        mapM_ (hPrint arquivo) livros
+        mapM_ (hPrint arquivo . formattLivro) livros
     putStrLn $ "Livros salvos com sucesso no arquivo: " ++ nomeArquivo
+
+formattLivro :: LivroInfo -> String
+formattLivro (Livro cod tit aut edt anoPubli) =
+    intercalate ", " ["Livro", show cod, tit, aut, edt, show anoPubli]    
 
 loopPrincipal :: [LivroInfo] -> IO ()
 loopPrincipal livros = do
     putStrLn ""
     putStrLn "Para interagir com as funcionalidades relacionadas aos livros, escolha uma das opções abaixo."
     putStrLn "(1) - Para adicionar um ou mais livros."
-    putStrLn "(2) - Para remover um ou mais livros."
+    putStrLn "(2) - Para remover um livros."
     putStrLn "(3) - Para exibir todos os livros."
     putStrLn "(4) - Para salvar a lista de livros em um arquivo."
     putStrLn "Sair - Qualquer tecla que não seja uma opção."

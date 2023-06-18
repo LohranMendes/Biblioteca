@@ -1,12 +1,13 @@
-module Multas (mainMulta) where
+module Multas (mainMulta, MultaInfo, multaTemId, carregarMultas) where
 
 import Data.Time.Calendar (Day, fromGregorian, toGregorian)
-import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)
+import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime, formatTime)
 import Aluno (AlunoInfo, alunoTemId, carregarAlunos)
 import Data.List.Split (splitOn)
 import System.IO
 import Data.List (any)
 import Data.Char (isSpace)
+import Control.Exception (bracket)
 
 type IdMulta = Int
 type IdAluno = Int
@@ -34,6 +35,18 @@ carregarMultas = do
           let linhas = lines conteudo
           return (map parseMulta linhas)
 
+carregarMultasPagas :: IO [MultaInfo]
+carregarMultasPagas = do
+  let nomeArquivo = "multaspagas.txt"
+  conteudo <- readFile nomeArquivo
+  if null conteudo
+      then do
+          putStrLn "O arquivo de multas pagas está vazio."
+          return []  -- Retorna uma lista vazia de multas
+      else do
+          let linhas = lines conteudo
+          return (map parseMulta linhas)
+
 parseMulta :: String -> MultaInfo
 parseMulta linha =
     case splitOn " " linha of
@@ -41,7 +54,7 @@ parseMulta linha =
         let idMulta = read idMultaStr :: IdMulta
             idAluno = read idAlunoStr :: IdAluno
             valor = read valorStr :: Valor
-            dtPag = case parseData dtPagStr of
+            dtPag = case parseDataVerificar dtPagStr of
                     Just d -> d
                     Nothing -> nullDay
         in Multa idMulta idAluno valor dtPag
@@ -51,9 +64,12 @@ parseMulta linha =
 removerAspas :: String -> String
 removerAspas str = filter (\c -> c /= '\"' && c /= '\\') str
 
+parseDataVerificar :: String -> Maybe Day
+parseDataVerificar = parseTimeM True defaultTimeLocale "%Y-%m-%d" :: String -> Maybe Day
+
 -- Função para fazer o parsing da data no formato "dd/mm/aaaa"
 parseData :: String -> Maybe Day
-parseData = parseTimeM True defaultTimeLocale "%d/%m/%Y" :: String -> Maybe Day
+parseData = parseTimeM True defaultTimeLocale "%d-%m-%Y" :: String -> Maybe Day
 
 -- Função para verificar se um aluno existe com base no identificador
 alunoJaExiste :: IdAluno -> [AlunoInfo] -> IO Bool
@@ -81,47 +97,52 @@ adicionarMulta multas = do
             putStrLn "O identificador da multa já existe. Tente novamente."
             adicionarMulta multas
         else do
-            putStrLn "Digite o identificador do aluno:"
-            idalunoStr <- getLine
-            let idaluno = read idalunoStr :: IdAluno
-            putStrLn ""
-
-            alunoExiste <- alunoJaExiste idaluno alunos
-            if alunoExiste
+            multasPagas <- carregarMultasPagas
+            let multaExistentePagas = any (multaTemId idmulta) multasPagas
+            if multaExistentePagas
                 then do
-                    putStrLn "Digite o valor da multa:"
-                    valorStr <- getLine
-                    let valor = read valorStr :: Valor
+                    putStrLn "O identificador da multa já existe nas multas pagas. Tente novamente."
+                    adicionarMulta multas
+                else do
+                    putStrLn "Digite o identificador do aluno:"
+                    idalunoStr <- getLine
+                    let idaluno = read idalunoStr :: IdAluno
                     putStrLn ""
 
-                    putStrLn "Digite a data do pagamento da multa (dd/mm/aaaa):"
-                    input <- getLine
-                    case parseData input of
-                        Just datapagamento -> do
-                            let novaMulta = criarMulta idmulta idaluno valor datapagamento
-                            putStrLn "Multa adicionada:"
-                            print novaMulta
+                    alunoExiste <- alunoJaExiste idaluno alunos
+                    if alunoExiste
+                        then do
+                            putStrLn "Digite o valor da multa:"
+                            valorStr <- getLine
+                            let valor = read valorStr :: Valor
                             putStrLn ""
 
-                            putStrLn "Deseja adicionar outra multa? (s/n):"
-                            resposta <- getLine
-                            putStrLn ""
+                            putStrLn "Digite a data limite do pagamento da multa (dd-mm-YYYY):"
+                            input <- getLine
+                            case parseData input of
+                                Just datapagamento -> do
+                                    let novaMulta = criarMulta idmulta idaluno valor datapagamento
+                                    putStrLn "Multa adicionada:"
+                                    print novaMulta
+                                    putStrLn ""
 
-                            let novaListaMulta = novaMulta : multas
-                            if resposta == "s"
-                                then do
-                                    adicionarMulta novaListaMulta
-                                else do
-                                    putStrLn "Multa(s) adicionada(s)!"
-                                    salvarMultas novaListaMulta
-                                    return (novaMulta : multas)
-                        Nothing -> do
-                            putStrLn "Formato de data inválido. Tente novamente."
+                                    putStrLn "Deseja adicionar outra multa? (s/n):"
+                                    resposta <- getLine
+                                    putStrLn ""
+
+                                    let novaListaMulta = novaMulta : multas
+                                    if resposta == "s"
+                                        then do
+                                            adicionarMulta novaListaMulta
+                                        else do
+                                            putStrLn "Multa(s) adicionada(s)!"
+                                            salvarMultas novaListaMulta
+                                            return (novaMulta : multas)
+                                Nothing -> do
+                                    putStrLn "Formato de data inválido. Tente novamente."
+                                    adicionarMulta multas
+                        else do
                             adicionarMulta multas
-                else do
-                    adicionarMulta multas
-
-
 
 removerMulta :: IdMulta -> [MultaInfo] -> IO [MultaInfo]
 removerMulta idmulta multas = do
@@ -136,12 +157,21 @@ removerMulta idmulta multas = do
 exibirMultas :: [MultaInfo] -> IO ()
 exibirMultas [] = putStrLn "Nenhuma multa adicionada."
 exibirMultas multas = do
-  let multasInvertidos = reverse multas
-  mapM_ (putStrLn . formatMulta) multasInvertidos
+  let multasInvertidas = reverse multas
+  mapM_ (putStrLn . formatMulta) multasInvertidas
+
+exibirMultasPagas :: [MultaInfo] -> IO ()
+exibirMultasPagas [] = putStrLn "Nenhuma multa paga adicionada."
+exibirMultasPagas multaspg = do
+  let multaspgInvertidas = reverse multaspg
+  mapM_ (putStrLn . formatMulta) multaspgInvertidas
 
 formatMulta :: MultaInfo -> String
 formatMulta (Multa id idAluno valor dtPag) =
-  "ID: " ++ show id ++ ", ID Aluno: " ++ show idAluno ++ ", Valor: " ++ show valor ++ ", Data de Pagamento: " ++ show dtPag
+  "ID Multa: " ++ show id ++ ", ID Aluno: " ++ show idAluno ++ ", Valor: " ++ show valor ++ ", Data de Pagamento: " ++ formatDate dtPag
+
+formatDate :: Day -> String
+formatDate dt = formatTime defaultTimeLocale "%d-%m-%Y" dt
 
 -- Função auxiliar para remover as aspas de uma string
 removeAspas :: String -> String
@@ -156,17 +186,60 @@ salvarMultas multas = do
     let nomeArquivo = "multas.txt"
     withFile nomeArquivo WriteMode $ \arquivo -> do
         mapM_ (hPrint arquivo) multas
-    putStrLn $ "Multas salvas com sucesso no arquivo: " ++ nomeArquivo
- 
+    putStrLn $ "Multas salvas com sucesso no arquivo: " ++ nomeArquivo 
 
-loopPrincipal :: [MultaInfo] -> IO ()
-loopPrincipal multas = do
+salvarMultasPagas :: [MultaInfo] -> IO ()
+salvarMultasPagas pagas = do
+    let nomeArquivo = "multaspagas.txt"
+    withFile nomeArquivo WriteMode $ \arquivo -> do
+        mapM_ (hPrint arquivo) pagas
+    putStrLn $ "Multas pagas salvas com sucesso no arquivo: " ++ nomeArquivo    
+
+removerMultasPagas :: MultaInfo -> [MultaInfo] -> IO ()
+removerMultasPagas multa multaspg = do
+    let multaspgAtualizadas = multa : multaspg
+    salvarMultasPagas multaspgAtualizadas
+    putStrLn ""
+    putStrLn "Multa fechada com sucesso!"
+  where
+    getIdMulta (Multa id _ _ _) = id  
+
+removerMultaPaga :: IdMulta -> [MultaInfo] -> [MultaInfo] -> IO [MultaInfo]
+removerMultaPaga idmulta multas multaspg = do
+    let multaEncontrada = acheMultaId idmulta multas
+    case multaEncontrada of
+        Just multa -> do
+            removerMultasPagas multa multaspg
+            let multasAtualizadas = filter (\m -> getIdMulta m /= idmulta) multas
+            salvarMultas multasAtualizadas
+            putStrLn ""
+            putStrLn "Multa fechada com sucesso!"
+            return multasAtualizadas
+        Nothing -> do
+            putStrLn "Multa não encontrada."
+            return multas
+  where
+    acheMultaId :: IdMulta -> [MultaInfo] -> Maybe MultaInfo
+    acheMultaId _ [] = Nothing
+    acheMultaId idmulta (m:ms)
+        | getIdMulta m == idmulta = Just m
+        | otherwise = acheMultaId idmulta ms
+
+    getIdMulta (Multa id _ _ _) = id
+
+getIdAluno :: MultaInfo -> IdAluno
+getIdAluno (Multa _ idAluno _ _) = idAluno
+
+loopPrincipal :: [MultaInfo] -> [MultaInfo] -> IO ()
+loopPrincipal multas multaspg = do
     putStrLn ""
     putStrLn "Para interagir com as funcionalidades relacionadas às multas, escolha uma das opções abaixo:"
     putStrLn "(1) - Para adicionar uma ou mais multas."
-    putStrLn "(2) - Para remover uma ou mais multas."
-    putStrLn "(3) - Para exibir todas as multas."
-    putStrLn "(4) - Para salvar a lista de multas em um arquivo."
+    putStrLn "(2) - Para remover uma multa."
+    putStrLn "(3) - Para exibir todas as multas abertas."
+    putStrLn "(4) - Para fechar uma multa."
+    putStrLn "(5) - Para exibir todas as multas fechadas."
+    putStrLn "(6) - Para exibir todos os alunos com multas pendentes."
     putStrLn "Sair - Qualquer tecla que não seja uma opção."
     putStrLn ""
 
@@ -176,28 +249,39 @@ loopPrincipal multas = do
     case opcao of
         "1" -> do
             novasMultas <- adicionarMulta multas
-            loopPrincipal novasMultas
+            loopPrincipal novasMultas multaspg
         "2" -> do
             putStrLn "Digite o identificador da multa a ser removida:"
             idmultaStr <- getLine
             let idmulta = read idmultaStr :: IdMulta
             novaListaMultas <- removerMulta idmulta multas
-            loopPrincipal novaListaMultas
+            loopPrincipal novaListaMultas multaspg
         "3" -> do
-            putStrLn "Exibindo todos as multas abertas:"
+            putStrLn "Exibindo todas as multas abertas:"
             exibirMultas multas
-            loopPrincipal multas
+            loopPrincipal multas multaspg
         "4" -> do
-            salvarMultas multas
-            loopPrincipal multas
+            putStrLn "Digite o identificador da multa a ser fechada:"
+            idmultaStr <- getLine
+            let idmulta = read idmultaStr :: IdMulta
+            novaListaMultas <- removerMultaPaga idmulta multas multaspg
+            loopPrincipal multas novaListaMultas
+        "5" -> do
+            putStrLn "Exibindo todas as multas fechadas:"
+            exibirMultasPagas multaspg
+            loopPrincipal multas multaspg
         _ -> putStrLn "Encerrando o programa."                           
             
 
 listaMultas :: IO [MultaInfo]
 listaMultas = carregarMultas
 
+listaMultasPagas :: IO [MultaInfo]
+listaMultasPagas = carregarMultas
+
 mainMulta :: IO ()
 mainMulta = do
     putStrLn "Bem-vindo às funcionalidades sobre multas."
     multas <- carregarMultas
-    loopPrincipal multas
+    multaspg <- carregarMultasPagas
+    loopPrincipal multas multaspg

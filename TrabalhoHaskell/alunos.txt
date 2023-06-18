@@ -1,7 +1,7 @@
-Aluno 7 "Laila" "Pedagogia" 1077990
-Aluno 6 "Renan" "Biblioteconomia" 1077200
-Aluno 5 "Luis" "Medicina" 1077320
-Aluno 4 "Joao" "Matematica" 1077400
-Aluno 3 "Angela" "Direito" 1077333
-Aluno 2 "Maria" "Radiologia" 1077324
-Aluno 1 "Lohran" "Culinaria" 1077325
+"Aluno, 7, Laila Romanoff, Pedagogia, 1032409"
+"Aluno, 6, Renan, Biblioteconomia, 1077200"
+"Aluno, 5, Luis, Medicina, 1077320"
+"Aluno, 4, Joao, Matematica, 1077400"
+"Aluno, 3, Angela, Direito, 1077333"
+"Aluno, 2, Maria, Radiologia, 1077324"
+"Aluno, 1, Lohran, Culinaria, 1077325"

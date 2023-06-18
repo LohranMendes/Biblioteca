@@ -134,7 +134,9 @@ removerEmprestimo idemprestimo emprestimos = do
 
 exibirEmprestimos :: [EmprestimoInfo] -> IO ()
 exibirEmprestimos [] = putStrLn "Nenhum emprestimo adicionado."
-exibirEmprestimos emprestimos = mapM_ print emprestimos
+exibirEmprestimos emprestimos = do
+    let emprestimosInvertidos = reverse emprestimos
+    mapM_ print emprestimosInvertidos
 
 loopPrincipal :: [EmprestimoInfo] -> IO ()
 loopPrincipal listaEmprestimos = do
@@ -161,7 +163,7 @@ loopPrincipal listaEmprestimos = do
             loopPrincipal novaListaEmprestimos
         "3" -> do
             putStrLn "Exibindo todos os emprestimos:"
-            exibirEmprestimos listaEmprestimos
+            exibirEmprestimos (reverse listaEmprestimos)
             loopPrincipal listaEmprestimos
         _ -> putStrLn "Opção inválida. Retornando às opções sobre emprestimos."
 

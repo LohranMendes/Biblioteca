@@ -1,4 +1,4 @@
-module Livro (mainLivro, LivroInfo, livroTemCodigo, carregarLivros) where
+module Livro (mainLivro, LivroInfo, livroTemCodigo, carregarLivros, exibirLivroInfo, getCodigo, getTitulo, getAutor, getEditora, getAno) where
 
 import Data.List.Split (splitOn)
 import System.IO
@@ -45,7 +45,7 @@ carregarLivros = do
                 let codigo = read codigoStr :: Codigo
                     anoPubli = read (trimQuotes anoPubliStr) :: AnoPublicacao
                 in Livro codigo (removerAspas titulo) (removerAspas autor) (removerAspas editora) anoPubli
-            _ -> error "Formato inválido de entrada"
+            _ -> error "Formato inválido de entrada"     
 
 removerAspas :: String -> String
 removerAspas str = filter (\c -> c /= '\"' && c /= '\\') str
@@ -104,6 +104,31 @@ adicionarLivro livros = do
                     putStrLn "Livro(s) adicionado(s)!"
                     salvarLivros novaListaLivros
                     return novaListaLivros
+
+getCodigo :: LivroInfo -> Codigo
+getCodigo (Livro codigo _ _ _ _) = codigo
+
+getTitulo :: LivroInfo -> Titulo
+getTitulo (Livro _ titulo _ _ _) = titulo
+
+getAutor :: LivroInfo -> Autor
+getAutor (Livro _ _ autor _ _) = autor
+
+getEditora :: LivroInfo -> Editora
+getEditora (Livro _ _ _ editora _) = editora
+
+getAno :: LivroInfo -> AnoPublicacao
+getAno (Livro _ _ _ _ ano) = ano
+
+exibirLivroInfo :: LivroInfo -> IO ()
+exibirLivroInfo livro = do
+  putStrLn ""    
+  putStrLn "Informações do livro:"
+  putStrLn $ "Código: " ++ show (getCodigo livro)
+  putStrLn $ "Título: " ++ getTitulo livro
+  putStrLn $ "Autor: " ++ getAutor livro
+  putStrLn $ "Editora: " ++ getEditora livro
+  putStrLn $ "Ano de Publicação: " ++ show (getAno livro)
 
 removerLivro :: Codigo -> [LivroInfo] -> IO [LivroInfo]
 removerLivro codigo livros = do
@@ -170,7 +195,7 @@ loopPrincipal livros = do
         "4" -> do
             salvarLivros livros
             loopPrincipal livros
-        _ -> putStrLn "Encerrando o programa."
+        _ -> putStrLn "Encerrando as funcionalidades de livros."
 
 mainLivro :: IO ()
 mainLivro = do

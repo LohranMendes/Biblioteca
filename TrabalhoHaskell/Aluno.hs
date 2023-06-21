@@ -1,4 +1,4 @@
-module Aluno (mainAluno, AlunoInfo, alunoTemId, carregarAlunos) where
+module Aluno (mainAluno, AlunoInfo, alunoTemId, carregarAlunos, exibirAlunoInfo, getIdAluno, getNome, getCurso, getNumMat) where
 
 import Data.List.Split (splitOn)
 import System.IO
@@ -126,6 +126,27 @@ removeAspas str = filter (/= '"') str
 alunoTemId :: IdAluno -> AlunoInfo -> Bool
 alunoTemId idAluno (Aluno id _ _ _) = idAluno == id
 
+getIdAluno :: AlunoInfo -> IdAluno
+getIdAluno (Aluno idaluno _ _ _) = idaluno
+
+getNome :: AlunoInfo -> NomeAluno
+getNome (Aluno _ nome _ _) = nome
+
+getCurso :: AlunoInfo -> CursoAluno
+getCurso (Aluno _ _ curso _) = curso
+
+getNumMat :: AlunoInfo -> NumMat
+getNumMat (Aluno _ _ _ numMat) = numMat
+
+exibirAlunoInfo :: AlunoInfo -> IO ()
+exibirAlunoInfo aluno = do
+  putStrLn ""  
+  putStrLn "Informações do aluno:"
+  putStrLn $ "ID Aluno: " ++ show (getIdAluno aluno)
+  putStrLn $ "Nome: " ++ getNome aluno
+  putStrLn $ "Curso: " ++ getCurso aluno
+  putStrLn $ "Matricula: " ++ show (getNumMat aluno)
+
 -- Função para salvar a lista de alunos em um arquivo
 salvarAlunos :: [AlunoInfo] -> IO ()
 salvarAlunos alunos = do
@@ -169,7 +190,7 @@ loopPrincipal alunos = do
         "4" -> do
             salvarAlunos alunos
             loopPrincipal alunos
-        _ -> putStrLn "Encerrando o programa."
+        _ -> putStrLn "Encerrando às funcionalidades de alunos."
     
 listaAlunos :: IO [AlunoInfo]
 listaAlunos = carregarAlunos

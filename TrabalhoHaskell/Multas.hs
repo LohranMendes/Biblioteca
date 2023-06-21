@@ -1,13 +1,12 @@
-module Multas (mainMulta, MultaInfo, multaTemId, carregarMultas) where
+module Multas (mainMulta, MultaInfo, multaTemId, carregarMultas, alunosPendentes) where
 
 import Data.Time.Calendar (Day, fromGregorian, toGregorian)
 import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime, formatTime)
-import Aluno (AlunoInfo, alunoTemId, carregarAlunos)
+import Aluno (AlunoInfo, alunoTemId, carregarAlunos, exibirAlunoInfo, getIdAluno, getNome, getCurso, getNumMat)
 import Data.List.Split (splitOn)
 import System.IO
 import Data.List (any)
 import Data.Char (isSpace)
-import Control.Exception (bracket)
 
 type IdMulta = Int
 type IdAluno = Int
@@ -60,14 +59,10 @@ parseMulta linha =
         in Multa idMulta idAluno valor dtPag
     _ -> error "Formato inválido de entrada"
 
--- Função auxiliar para remover as aspas de uma string
-removerAspas :: String -> String
-removerAspas str = filter (\c -> c /= '\"' && c /= '\\') str
-
 parseDataVerificar :: String -> Maybe Day
 parseDataVerificar = parseTimeM True defaultTimeLocale "%Y-%m-%d" :: String -> Maybe Day
 
--- Função para fazer o parsing da data no formato "dd/mm/aaaa"
+-- Função para fazer o parsing da data no formato "dd-mm-aaaa"
 parseData :: String -> Maybe Day
 parseData = parseTimeM True defaultTimeLocale "%d-%m-%Y" :: String -> Maybe Day
 
@@ -117,7 +112,7 @@ adicionarMulta multas = do
                             let valor = read valorStr :: Valor
                             putStrLn ""
 
-                            putStrLn "Digite a data limite do pagamento da multa (dd-mm-YYYY):"
+                            putStrLn "Digite a data limite do pagamento da multa (dd-mm-aaaa):"
                             input <- getLine
                             case parseData input of
                                 Just datapagamento -> do
@@ -195,26 +190,18 @@ salvarMultasPagas pagas = do
         mapM_ (hPrint arquivo) pagas
     putStrLn $ "Multas pagas salvas com sucesso no arquivo: " ++ nomeArquivo    
 
-removerMultasPagas :: MultaInfo -> [MultaInfo] -> IO ()
-removerMultasPagas multa multaspg = do
-    let multaspgAtualizadas = multa : multaspg
-    salvarMultasPagas multaspgAtualizadas
-    putStrLn ""
-    putStrLn "Multa fechada com sucesso!"
-  where
-    getIdMulta (Multa id _ _ _) = id  
-
 removerMultaPaga :: IdMulta -> [MultaInfo] -> [MultaInfo] -> IO [MultaInfo]
 removerMultaPaga idmulta multas multaspg = do
     let multaEncontrada = acheMultaId idmulta multas
     case multaEncontrada of
         Just multa -> do
-            removerMultasPagas multa multaspg
+            let multaspgAtualizadas = multa : multaspg
+            salvarMultasPagas multaspgAtualizadas
             let multasAtualizadas = filter (\m -> getIdMulta m /= idmulta) multas
             salvarMultas multasAtualizadas
             putStrLn ""
             putStrLn "Multa fechada com sucesso!"
-            return multasAtualizadas
+            return multaspgAtualizadas
         Nothing -> do
             putStrLn "Multa não encontrada."
             return multas
@@ -227,8 +214,17 @@ removerMultaPaga idmulta multas multaspg = do
 
     getIdMulta (Multa id _ _ _) = id
 
-getIdAluno :: MultaInfo -> IdAluno
-getIdAluno (Multa _ idAluno _ _) = idAluno
+getIdAlunoMulta :: MultaInfo -> IdAluno
+getIdAlunoMulta (Multa _ idAluno _ _) = idAluno
+
+alunosPendentes :: [MultaInfo] -> [AlunoInfo] -> IO ()
+alunosPendentes multas alunos = do
+    let idsAlunos = map getIdAlunoMulta multas
+        alunosPendentes = filter (\aluno -> getIdAluno aluno `elem` idsAlunos) alunos
+        alunosReverso = reverse alunosPendentes
+    if null alunosPendentes
+      then putStrLn "Nao tem alunos com multas pendentes."
+      else mapM_ exibirAlunoInfo alunosReverso
 
 loopPrincipal :: [MultaInfo] -> [MultaInfo] -> IO ()
 loopPrincipal multas multaspg = do
@@ -265,12 +261,17 @@ loopPrincipal multas multaspg = do
             idmultaStr <- getLine
             let idmulta = read idmultaStr :: IdMulta
             novaListaMultas <- removerMultaPaga idmulta multas multaspg
-            loopPrincipal multas novaListaMultas
+            nLM <- removerMulta idmulta multas
+            loopPrincipal nLM novaListaMultas
         "5" -> do
             putStrLn "Exibindo todas as multas fechadas:"
             exibirMultasPagas multaspg
             loopPrincipal multas multaspg
-        _ -> putStrLn "Encerrando o programa."                           
+        "6" -> do
+            alunos <- carregarAlunos
+            alunosPendentes multas alunos
+            loopPrincipal multas multaspg    
+        _ -> putStrLn "Encerrando as funcionalidades de multas."                           
             
 
 listaMultas :: IO [MultaInfo]

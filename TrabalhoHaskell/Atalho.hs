@@ -5,6 +5,7 @@ import Aluno (carregarAlunos)
 import Multas (carregarMultas, alunosPendentes)
 import Emprestimo (livrosDisponiveis, carregarEmprestimos, exibirAlunoEspecifico, exibirEmprestimos)
 import Reserva (carregarReservas, reservasEspecificas)
+import Text.Read (readMaybe)
 
 type IdAluno = Int
 
@@ -19,8 +20,12 @@ segundoRequisito = do
     putStrLn "Digite o id do aluno:"
     idalunoStr <- getLine
     putStrLn ""
-    let idaluno = read idalunoStr :: IdAluno
-    exibirAlunoEspecifico idaluno
+    case readMaybe idalunoStr :: Maybe IdAluno of
+        Just idaluno -> do
+            exibirAlunoEspecifico idaluno
+        Nothing -> do
+            putStrLn ""
+            putStrLn "Identificador do aluno inválido."    
 
 terceiroRequisito :: IO ()
 terceiroRequisito = do
@@ -32,8 +37,12 @@ quartoRequisito = do
     reservas <- carregarReservas
     putStrLn "Digite o id do aluno:"
     idalunoStr <- getLine
-    let idaluno = read idalunoStr :: IdAluno
-    reservasEspecificas idaluno reservas
+    case readMaybe idalunoStr :: Maybe IdAluno of
+        Just idaluno -> do
+            reservasEspecificas idaluno reservas
+        Nothing -> do
+            putStrLn ""
+            putStrLn "Identificador do aluno inválido."       
 
 quintoRequisito :: IO ()
 quintoRequisito = do

@@ -5,6 +5,7 @@ import System.IO
 import Data.List (any, intercalate)
 import Data.Char (isSpace)
 import System.Directory (doesFileExist)
+import Text.Read (readMaybe)
 
 type Codigo = Int
 type Titulo = String
@@ -61,49 +62,59 @@ adicionarLivro :: [LivroInfo] -> IO [LivroInfo]
 adicionarLivro livros = do
     putStrLn "Digite o código do livro:"
     codigoStr <- getLine
-    let codigo = read codigoStr :: Codigo
-    putStrLn ""
-
-    -- Verificar se o código já existe na lista carregada do arquivo
-    let codigoExistente = any (livroTemCodigo codigo) livros
-    if codigoExistente
-        then do
-            putStrLn "O identificador do livro já existe. Tente novamente."
-            adicionarLivro livros
-        else do
-            putStrLn "Digite o título do livro:"
-            titulo <- getLine
+    case readMaybe codigoStr :: Maybe Codigo of
+        Just codigo -> do
             putStrLn ""
 
-            putStrLn "Digite o autor do livro:"
-            autor <- getLine
-            putStrLn ""
-
-            putStrLn "Digite a editora do livro:"
-            editora <- getLine
-            putStrLn ""
-
-            putStrLn "Digite o ano de publicação do livro:"
-            anoPublicacaoStr <- getLine
-            let anoPublicacao = read anoPublicacaoStr :: AnoPublicacao
-            putStrLn ""
-
-            let novoLivro = criarLivro codigo titulo autor editora anoPublicacao
-            putStrLn "Livro adicionado:"
-            print novoLivro
-            putStrLn ""
-
-            putStrLn "Deseja adicionar outro livro? (s/n):"
-            resposta <- getLine
-            putStrLn ""
-
-            let novaListaLivros = novoLivro : livros
-            if resposta == "s"
-                then adicionarLivro novaListaLivros
+            -- Verificar se o código já existe na lista carregada do arquivo
+            let codigoExistente = any (livroTemCodigo codigo) livros
+            if codigoExistente
+                then do
+                    putStrLn "O identificador do livro já existe. Tente novamente."
+                    adicionarLivro livros
                 else do
-                    putStrLn "Livro(s) adicionado(s)!"
-                    salvarLivros novaListaLivros
-                    return novaListaLivros
+                    putStrLn "Digite o título do livro:"
+                    titulo <- getLine
+                    putStrLn ""
+
+                    putStrLn "Digite o autor do livro:"
+                    autor <- getLine
+                    putStrLn ""
+
+                    putStrLn "Digite a editora do livro:"
+                    editora <- getLine
+                    putStrLn ""
+
+                    putStrLn "Digite o ano de publicação do livro:"
+                    anoPublicacaoStr <- getLine
+                    case readMaybe anoPublicacaoStr :: Maybe AnoPublicacao of
+                        Just anoPublicacao -> do
+                            putStrLn ""
+
+                            let novoLivro = criarLivro codigo titulo autor editora anoPublicacao
+                            putStrLn "Livro adicionado:"
+                            print novoLivro
+                            putStrLn ""
+
+                            putStrLn "Deseja adicionar outro livro? (s/n):"
+                            resposta <- getLine
+                            putStrLn ""
+
+                            let novaListaLivros = novoLivro : livros
+                            if resposta == "s"
+                                then adicionarLivro novaListaLivros
+                                else do
+                                    putStrLn "Livro(s) adicionado(s)!"
+                                    salvarLivros novaListaLivros
+                                    return novaListaLivros
+                        Nothing -> do
+                            putStrLn "Ano de publicacao inválido. Por favor, tente novamente."
+                            putStrLn ""
+                            adicionarLivro livros          
+        Nothing -> do
+            putStrLn "Identificador de livro inválido. Por favor, tente novamente."
+            putStrLn ""
+            adicionarLivro livros                      
 
 getCodigo :: LivroInfo -> Codigo
 getCodigo (Livro codigo _ _ _ _) = codigo
@@ -172,7 +183,6 @@ loopPrincipal livros = do
     putStrLn "(1) - Para adicionar um ou mais livros."
     putStrLn "(2) - Para remover um livros."
     putStrLn "(3) - Para exibir todos os livros."
-    putStrLn "(4) - Para salvar a lista de livros em um arquivo."
     putStrLn "Sair - Qualquer tecla que não seja uma opção."
     putStrLn ""
 
@@ -186,14 +196,17 @@ loopPrincipal livros = do
         "2" -> do
             putStrLn "Digite o código do livro a ser removido:"
             codigoStr <- getLine
-            let codigo = read codigoStr :: Codigo
-            novaListaLivros <- removerLivro codigo livros
-            loopPrincipal novaListaLivros
+            case readMaybe codigoStr :: Maybe Codigo of
+                Just codigo -> do
+                    novaListaLivros <- removerLivro codigo livros
+                    loopPrincipal novaListaLivros
+                Nothing -> do
+                    putStrLn ""
+                    putStrLn "Identificador de livro inválido."
+                    putStrLn ""
+                    loopPrincipal livros    
         "3" -> do
             exibirLivros livros
-            loopPrincipal livros
-        "4" -> do
-            salvarLivros livros
             loopPrincipal livros
         _ -> putStrLn "Encerrando as funcionalidades de livros."
 

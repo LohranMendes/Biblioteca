@@ -8,6 +8,7 @@ import Aluno (AlunoInfo, alunoTemId, carregarAlunos)
 import System.IO
 import Data.List (any)
 import Data.Char (isSpace)
+import Text.Read (readMaybe)
 
 type IdEmprestimo = Int
 type Codigo = Int
@@ -98,87 +99,104 @@ livroEsta codigo (Emprestimo _ cod _ _ _) = codigo == cod
 emprestimoTemId :: IdEmprestimo -> EmprestimoInfo -> Bool
 emprestimoTemId idEmprestimo (Emprestimo id _ _ _ _) = idEmprestimo == id
 
-adicionarEmprestimo :: [EmprestimoInfo] -> IO [EmprestimoInfo]
+adicionarEmprestimo :: [EmprestimoInfo] -> IO [EmprestimoInfo] 
 adicionarEmprestimo emprestimos = do
     alunos <- carregarAlunos -- Carrega os alunos do arquivo alunos.txt
     livros <- carregarLivros -- Carrega os livros do arquivo livros.txt
     putStrLn "Digite o identificador do emprestimo:"
     idemprestimoStr <- getLine
-    let idemprestimo = read idemprestimoStr :: IdEmprestimo
-    putStrLn ""
+    case readMaybe idemprestimoStr :: Maybe IdEmprestimo of
+      Just idemprestimo -> do
+        putStrLn ""
 
-    let emprestimoExistente = any (emprestimoTemId idemprestimo) emprestimos
-    if emprestimoExistente
-        then do
-            putStrLn "O identificador do emprestimo já existe. Tente novamente."
-            adicionarEmprestimo emprestimos
-        else do
-          empDev <- carregarEmprestimosDev
-          let emprestimoDevExistente = any (emprestimoTemId idemprestimo) empDev
-          if emprestimoDevExistente
+        let emprestimoExistente = any (emprestimoTemId idemprestimo) emprestimos
+        if emprestimoExistente
             then do
-              putStrLn "O identificador do emprestimo já existe nos devolvidos. Tente novamente."
-              adicionarEmprestimo emprestimos
+                putStrLn "O identificador do emprestimo já existe. Tente novamente."
+                adicionarEmprestimo emprestimos
             else do
-              putStrLn "Digite o identificador do livro:"
-              codigoStr <- getLine
-              let codigo = read codigoStr :: Codigo
-              putStrLn ""
-
-              livroEx <- livroExiste codigo livros
-              if livroEx
+              empDev <- carregarEmprestimosDev
+              let emprestimoDevExistente = any (emprestimoTemId idemprestimo) empDev
+              if emprestimoDevExistente
                 then do
-                  let livroSalvo = any (livroEsta codigo) emprestimos
-                  if livroSalvo
-                    then do
-                      putStrLn "O identificador do livro já existe no arquivo. Tente novamente."
-                      adicionarEmprestimo emprestimos
-                    else do
-                      putStrLn "Digite o identificador do aluno:"
-                      idalunoStr <- getLine
-                      let idaluno = read idalunoStr :: IdAluno
+                  putStrLn "O identificador do emprestimo já existe nos devolvidos. Tente novamente."
+                  adicionarEmprestimo emprestimos
+                else do
+                  putStrLn "Digite o identificador do livro:"
+                  codigoStr <- getLine
+                  case readMaybe codigoStr :: Maybe Codigo of
+                    Just codigo -> do
                       putStrLn ""
 
-                      alunoEx <- alunoExiste idaluno alunos
-                      if alunoEx
+                      livroEx <- livroExiste codigo livros
+                      if livroEx
                         then do
-                          putStrLn "Digite a data do emprestimo do livro (dd-mm-aaaa):"
-                          input <- getLine
-                          case parseData input of
-                            Just dataemprestimo -> do
-                              putStrLn ""
-                              putStrLn "Digite a data da devolução do livro (dd-mm-YYYY):"
-                              dtDev <- getLine
-                              case parseData dtDev of
-                                Just datadevolucao -> do
-                                  putStrLn ""
-                                  let novaEmprestimo = criarEmprestimo idemprestimo codigo idaluno dataemprestimo datadevolucao
-                                  putStrLn "Emprestimo adicionado:"
-                                  print novaEmprestimo
+                          let livroSalvo = any (livroEsta codigo) emprestimos
+                          if livroSalvo
+                            then do
+                              putStrLn "O identificador do livro já existe no arquivo. Tente novamente."
+                              adicionarEmprestimo emprestimos
+                            else do
+                              putStrLn "Digite o identificador do aluno:"
+                              idalunoStr <- getLine
+                              case readMaybe idalunoStr :: Maybe IdAluno of
+                                Just idaluno -> do
                                   putStrLn ""
 
-                                  putStrLn "Deseja adicionar outro emprestimo? (s/n):"
-                                  resposta <- getLine
-                                  putStrLn ""
-
-                                  let novaListaEmprestimo = novaEmprestimo : emprestimos
-                                  if resposta == "s"
+                                  alunoEx <- alunoExiste idaluno alunos
+                                  if alunoEx
                                     then do
-                                      adicionarEmprestimo novaListaEmprestimo
+                                      putStrLn "Digite a data do emprestimo do livro (dd-mm-aaaa):"
+                                      input <- getLine
+                                      case parseData input of
+                                        Just dataemprestimo -> do
+                                          putStrLn ""
+                                          putStrLn "Digite a data da devolução do livro (dd-mm-YYYY):"
+                                          dtDev <- getLine
+                                          case parseData dtDev of
+                                            Just datadevolucao -> do
+                                              putStrLn ""
+                                              let novaEmprestimo = criarEmprestimo idemprestimo codigo idaluno dataemprestimo datadevolucao
+                                              putStrLn "Emprestimo adicionado:"
+                                              print novaEmprestimo
+                                              putStrLn ""
+
+                                              putStrLn "Deseja adicionar outro emprestimo? (s/n):"
+                                              resposta <- getLine
+                                              putStrLn ""
+
+                                              let novaListaEmprestimo = novaEmprestimo : emprestimos
+                                              if resposta == "s"
+                                                then do
+                                                  adicionarEmprestimo novaListaEmprestimo
+                                                else do
+                                                  putStrLn "Emprestimo(s) adicionado(s)!"
+                                                  salvarEmprestimo novaListaEmprestimo
+                                                  return (novaEmprestimo : emprestimos)
+                                            Nothing -> do
+                                                  putStrLn "Formato de data inválido. Tente novamente."
+                                                  putStrLn ""
+                                                  adicionarEmprestimo emprestimos
+                                        Nothing -> do
+                                              putStrLn "Formato de data inválido. Tente novamente."
+                                              putStrLn ""
+                                              adicionarEmprestimo emprestimos
                                     else do
-                                      putStrLn "Emprestimo(s) adicionado(s)!"
-                                      salvarEmprestimo novaListaEmprestimo
-                                      return (novaEmprestimo : emprestimos)
-                                Nothing -> do
-                                      putStrLn "Formato de data inválido. Tente novamente."
                                       adicionarEmprestimo emprestimos
-                            Nothing -> do
-                                  putStrLn "Formato de data inválido. Tente novamente."
-                                  adicionarEmprestimo emprestimos
+                                Nothing -> do
+                                  putStrLn "Identificador de aluno inválido. Tente novamente."
+                                  putStrLn ""
+                                  adicionarEmprestimo emprestimos        
                         else do
                           adicionarEmprestimo emprestimos
-                else do
-                  adicionarEmprestimo emprestimos            
+                    Nothing -> do
+                      putStrLn "Identificador de livro inválido. Tente novamente."
+                      putStrLn ""
+                      adicionarEmprestimo emprestimos    
+      Nothing -> do
+        putStrLn "Identificador de emprestimo inválido. Tente novamente."
+        putStrLn ""
+        adicionarEmprestimo emprestimos
 
 removerEmprestimo :: IdEmprestimo -> [EmprestimoInfo] -> IO [EmprestimoInfo]
 removerEmprestimo idemprestimo emprestimos = do
@@ -313,9 +331,14 @@ loopPrincipal emprestimos empdevs = do
         "2" -> do
             putStrLn "Digite o identificador do emprestimo a ser removido:"
             idemprestimoStr <- getLine
-            let idemprestimo = read idemprestimoStr :: IdEmprestimo
-            novaListaEmprestimos <- removerEmprestimo idemprestimo emprestimos
-            loopPrincipal novaListaEmprestimos empdevs
+            case readMaybe idemprestimoStr :: Maybe IdEmprestimo of
+              Just idemprestimo -> do
+                novaListaEmprestimos <- removerEmprestimo idemprestimo emprestimos
+                loopPrincipal novaListaEmprestimos empdevs
+              Nothing -> do
+                putStrLn ""
+                putStrLn "Identificador de emprestimo inválido."
+                loopPrincipal emprestimos empdevs  
         "3" -> do
             putStrLn "Exibindo todos os emprestimos abertos:"
             exibirEmprestimos emprestimos
@@ -323,10 +346,15 @@ loopPrincipal emprestimos empdevs = do
         "4" -> do
             putStrLn "Digite o identificador do emprestimo a ser fechado:"
             idemprestimoStr <- getLine
-            let idemprestimo = read idemprestimoStr :: IdEmprestimo
-            novaListaEmprestimo <- removerEmprestimoDevolvido idemprestimo emprestimos empdevs
-            nLE <- removerEmprestimo idemprestimo emprestimos
-            loopPrincipal nLE novaListaEmprestimo
+            case readMaybe idemprestimoStr :: Maybe IdEmprestimo of
+              Just idemprestimo -> do
+                novaListaEmprestimo <- removerEmprestimoDevolvido idemprestimo emprestimos empdevs
+                nLE <- removerEmprestimo idemprestimo emprestimos
+                loopPrincipal nLE novaListaEmprestimo
+              Nothing -> do
+                putStrLn ""
+                putStrLn "Identificador de emprestimo inválido."
+                loopPrincipal emprestimos empdevs    
         "5" -> do
             putStrLn "Exibindo todos os emprestimos devolvidos:"
             exibirEmprestimosDev empdevs
@@ -335,9 +363,14 @@ loopPrincipal emprestimos empdevs = do
             putStrLn "Digite o id do aluno:"
             idalunoStr <- getLine
             putStrLn ""
-            let idaluno = read idalunoStr :: IdAluno
-            exibirAlunoEspecifico idaluno
-            loopPrincipal emprestimos empdevs   
+            case readMaybe idalunoStr :: Maybe IdAluno of
+              Just idaluno -> do
+                exibirAlunoEspecifico idaluno
+                loopPrincipal emprestimos empdevs  
+              Nothing -> do
+                putStrLn ""
+                putStrLn "Identificador de aluno inválido."
+                loopPrincipal emprestimos empdevs         
         "7" -> do 
             livros <- carregarLivros
             livrosDisponiveis emprestimos livros

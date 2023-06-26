@@ -7,6 +7,7 @@ import Data.List.Split (splitOn)
 import System.IO
 import Data.List (any)
 import Data.Char (isSpace)
+import Text.Read (readMaybe)
 
 type IdMulta = Int
 type IdAluno = Int
@@ -82,62 +83,77 @@ adicionarMulta multas = do
     alunos <- carregarAlunos -- Carrega os alunos do arquivo alunos.txt
     putStrLn "Digite o identificador da multa:"
     idmultaStr <- getLine
-    let idmulta = read idmultaStr :: IdMulta
-    putStrLn ""
+    case readMaybe idmultaStr :: Maybe IdMulta of
+        Just idmulta -> do
+            putStrLn ""
 
-    -- Verificar se o idMulta já existe na lista carregada do arquivo
-    let multaExistente = any (multaTemId idmulta) multas
-    if multaExistente
-        then do
-            putStrLn "O identificador da multa já existe. Tente novamente."
-            adicionarMulta multas
-        else do
-            multasPagas <- carregarMultasPagas
-            let multaExistentePagas = any (multaTemId idmulta) multasPagas
-            if multaExistentePagas
+            -- Verificar se o idMulta já existe na lista carregada do arquivo
+            let multaExistente = any (multaTemId idmulta) multas
+            if multaExistente
                 then do
-                    putStrLn "O identificador da multa já existe nas multas pagas. Tente novamente."
+                    putStrLn "O identificador da multa já existe. Tente novamente."
                     adicionarMulta multas
                 else do
-                    putStrLn "Digite o identificador do aluno:"
-                    idalunoStr <- getLine
-                    let idaluno = read idalunoStr :: IdAluno
-                    putStrLn ""
-
-                    alunoExiste <- alunoJaExiste idaluno alunos
-                    if alunoExiste
+                    multasPagas <- carregarMultasPagas
+                    let multaExistentePagas = any (multaTemId idmulta) multasPagas
+                    if multaExistentePagas
                         then do
-                            putStrLn "Digite o valor da multa:"
-                            valorStr <- getLine
-                            let valor = read valorStr :: Valor
-                            putStrLn ""
-
-                            putStrLn "Digite a data limite do pagamento da multa (dd-mm-aaaa):"
-                            input <- getLine
-                            case parseData input of
-                                Just datapagamento -> do
-                                    let novaMulta = criarMulta idmulta idaluno valor datapagamento
-                                    putStrLn "Multa adicionada:"
-                                    print novaMulta
-                                    putStrLn ""
-
-                                    putStrLn "Deseja adicionar outra multa? (s/n):"
-                                    resposta <- getLine
-                                    putStrLn ""
-
-                                    let novaListaMulta = novaMulta : multas
-                                    if resposta == "s"
-                                        then do
-                                            adicionarMulta novaListaMulta
-                                        else do
-                                            putStrLn "Multa(s) adicionada(s)!"
-                                            salvarMultas novaListaMulta
-                                            return (novaMulta : multas)
-                                Nothing -> do
-                                    putStrLn "Formato de data inválido. Tente novamente."
-                                    adicionarMulta multas
-                        else do
+                            putStrLn "O identificador da multa já existe nas multas pagas. Tente novamente."
                             adicionarMulta multas
+                        else do
+                            putStrLn "Digite o identificador do aluno:"
+                            idalunoStr <- getLine
+                            case readMaybe idalunoStr :: Maybe IdAluno of
+                                Just idaluno -> do
+                                    putStrLn ""
+
+                                    alunoExiste <- alunoJaExiste idaluno alunos
+                                    if alunoExiste
+                                        then do
+                                            putStrLn "Digite o valor da multa:"
+                                            valorStr <- getLine
+                                            case readMaybe valorStr :: Maybe Valor of
+                                                Just valor -> do
+                                                    putStrLn ""
+
+                                                    putStrLn "Digite a data limite do pagamento da multa (dd-mm-aaaa):"
+                                                    input <- getLine
+                                                    case parseData input of
+                                                        Just datapagamento -> do
+                                                            let novaMulta = criarMulta idmulta idaluno valor datapagamento
+                                                            putStrLn "Multa adicionada:"
+                                                            print novaMulta
+                                                            putStrLn ""
+
+                                                            putStrLn "Deseja adicionar outra multa? (s/n):"
+                                                            resposta <- getLine
+                                                            putStrLn ""
+
+                                                            let novaListaMulta = novaMulta : multas
+                                                            if resposta == "s"
+                                                                then do
+                                                                    adicionarMulta novaListaMulta
+                                                                else do
+                                                                    putStrLn "Multa(s) adicionada(s)!"
+                                                                    salvarMultas novaListaMulta
+                                                                    return (novaMulta : multas)
+                                                        Nothing -> do
+                                                            putStrLn "Formato de data inválido. Tente novamente."
+                                                            adicionarMulta multas
+                                                Nothing -> do
+                                                    putStrLn "Valor inválido. Por favor, tente novamente."
+                                                    putStrLn ""
+                                                    adicionarMulta multas            
+                                        else do
+                                            adicionarMulta multas
+                                Nothing -> do
+                                    putStrLn "Identificador de aluno inválido. Por favor, tente novamente."
+                                    putStrLn ""
+                                    adicionarMulta multas                                                
+        Nothing -> do
+            putStrLn "Identificador de multa inválido. Por favor, tente novamente."
+            putStrLn ""
+            adicionarMulta multas                            
 
 removerMulta :: IdMulta -> [MultaInfo] -> IO [MultaInfo]
 removerMulta idmulta multas = do
@@ -249,9 +265,14 @@ loopPrincipal multas multaspg = do
         "2" -> do
             putStrLn "Digite o identificador da multa a ser removida:"
             idmultaStr <- getLine
-            let idmulta = read idmultaStr :: IdMulta
-            novaListaMultas <- removerMulta idmulta multas
-            loopPrincipal novaListaMultas multaspg
+            case readMaybe idmultaStr :: Maybe IdMulta of
+                Just idmulta -> do
+                    novaListaMultas <- removerMulta idmulta multas
+                    loopPrincipal novaListaMultas multaspg
+                Nothing -> do
+                    putStrLn ""
+                    putStrLn "Identificador de multa inválido."
+                    loopPrincipal multas multaspg    
         "3" -> do
             putStrLn "Exibindo todas as multas abertas:"
             exibirMultas multas
@@ -259,10 +280,15 @@ loopPrincipal multas multaspg = do
         "4" -> do
             putStrLn "Digite o identificador da multa a ser fechada:"
             idmultaStr <- getLine
-            let idmulta = read idmultaStr :: IdMulta
-            novaListaMultas <- removerMultaPaga idmulta multas multaspg
-            nLM <- removerMulta idmulta multas
-            loopPrincipal nLM novaListaMultas
+            case readMaybe idmultaStr :: Maybe IdMulta of
+                Just idmulta -> do
+                    novaListaMultas <- removerMultaPaga idmulta multas multaspg
+                    nLM <- removerMulta idmulta multas
+                    loopPrincipal nLM novaListaMultas
+                Nothing -> do
+                    putStrLn ""
+                    putStrLn "Identificador de multa inválido."
+                    loopPrincipal multas multaspg    
         "5" -> do
             putStrLn "Exibindo todas as multas fechadas:"
             exibirMultasPagas multaspg

@@ -6,6 +6,7 @@ import Data.List (any, find)
 import Data.Char (isSpace)
 import Data.Time.Calendar (Day, fromGregorian, toGregorian)
 import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime, formatTime)
+import Text.Read (readMaybe)
 
 import Aluno (AlunoInfo, alunoTemId, carregarAlunos, exibirAlunoInfo, getIdAluno, getNome, getCurso, getNumMat)
 import Livro (LivroInfo, livroTemCodigo, carregarLivros, exibirLivroInfo, getCodigo, getTitulo, getAutor, getEditora, getAno)
@@ -103,67 +104,81 @@ adicionarReserva reservas = do
     livros <- carregarLivros -- Carrega os livros do arquivo livros.txt
     putStrLn "Digite o identificador da reserva:"
     idreservaStr <- getLine
-    let idreserva = read idreservaStr :: IdReserva
-    putStrLn ""
+    case readMaybe idreservaStr :: Maybe IdReserva of
+        Just idreserva -> do
+            putStrLn ""
 
-    -- Verificar se o idReserva já existe na lista carregada do arquivo
-    let reservaExistente = any (reservaTemId idreserva) reservas
-    if reservaExistente
-        then do
-            putStrLn "O identificador da reserva já existe. Tente novamente."
-            adicionarReserva reservas
-        else do
-            rsvfec <- carregarReservasFec
-            let reservaFecExistente = any (reservaTemId idreserva) rsvfec
-            if reservaFecExistente
+            -- Verificar se o idReserva já existe na lista carregada do arquivo
+            let reservaExistente = any (reservaTemId idreserva) reservas
+            if reservaExistente
                 then do
-                    putStrLn "O identificador da reserva já existe e foi fechada. Tente novamente."
+                    putStrLn "O identificador da reserva já existe. Tente novamente."
                     adicionarReserva reservas
                 else do
-                    putStrLn "Digite o código do livro:"
-                    codigoStr <- getLine
-                    let codigo = read codigoStr :: Codigo
-                    putStrLn ""
-            
-                    livroEx <- livroExiste codigo livros
-                    if livroEx
+                    rsvfec <- carregarReservasFec
+                    let reservaFecExistente = any (reservaTemId idreserva) rsvfec
+                    if reservaFecExistente
                         then do
-                            putStrLn "Digite o identificador do aluno:"
-                            idalunoStr <- getLine
-                            let idaluno = read idalunoStr :: IdAluno
-                            putStrLn ""
-
-                            alunoEx <- alunoExiste idaluno alunos
-                            if alunoEx
-                                then do
-                                    putStrLn "Digite a data da reserva (dd-mm-aaaa):"
-                                    input <- getLine
-                                    case parseData input of
-                                        Just datareserva -> do
-                                            let novaReserva = criarReserva idreserva codigo idaluno datareserva
-                                            putStrLn "Reserva adicionada:"
-                                            print novaReserva
-                                            putStrLn ""
-
-                                            putStrLn "Deseja adicionar outra reserva? (s/n):"
-                                            resposta <- getLine
-                                            putStrLn ""
-
-                                            let novaListaReserva = novaReserva : reservas
-                                            if resposta == "s"
-                                                then do
-                                                    adicionarReserva novaListaReserva
-                                                else do
-                                                    putStrLn "Reserva(s) adicionada(s)!"
-                                                    salvarReservas novaListaReserva
-                                                    return (novaReserva : reservas)
-                                        Nothing -> do
-                                                    putStrLn "Formato de data inválido. Tente novamente."
-                                                    adicionarReserva reservas
-                                else do
-                                    adicionarReserva reservas
+                            putStrLn "O identificador da reserva já existe e foi fechada. Tente novamente."
+                            adicionarReserva reservas
                         else do
-                            adicionarReserva reservas            
+                            putStrLn "Digite o código do livro:"
+                            codigoStr <- getLine
+                            case readMaybe codigoStr :: Maybe Codigo of
+                                Just codigo -> do
+                                    putStrLn ""
+                            
+                                    livroEx <- livroExiste codigo livros
+                                    if livroEx
+                                        then do
+                                            putStrLn "Digite o identificador do aluno:"
+                                            idalunoStr <- getLine
+                                            case readMaybe idalunoStr :: Maybe IdAluno of
+                                                Just idaluno -> do
+                                                    putStrLn ""
+
+                                                    alunoEx <- alunoExiste idaluno alunos
+                                                    if alunoEx
+                                                        then do
+                                                            putStrLn "Digite a data da reserva (dd-mm-aaaa):"
+                                                            input <- getLine
+                                                            case parseData input of
+                                                                Just datareserva -> do
+                                                                    let novaReserva = criarReserva idreserva codigo idaluno datareserva
+                                                                    putStrLn "Reserva adicionada:"
+                                                                    print novaReserva
+                                                                    putStrLn ""
+
+                                                                    putStrLn "Deseja adicionar outra reserva? (s/n):"
+                                                                    resposta <- getLine
+                                                                    putStrLn ""
+
+                                                                    let novaListaReserva = novaReserva : reservas
+                                                                    if resposta == "s"
+                                                                        then do
+                                                                            adicionarReserva novaListaReserva
+                                                                        else do
+                                                                            putStrLn "Reserva(s) adicionada(s)!"
+                                                                            salvarReservas novaListaReserva
+                                                                            return (novaReserva : reservas)
+                                                                Nothing -> do
+                                                                            putStrLn "Formato de data inválido. Tente novamente."
+                                                                            adicionarReserva reservas
+                                                        else do
+                                                            adicionarReserva reservas
+                                                Nothing -> do
+                                                    putStrLn "Identificador de aluno inválido. Por favor, tente novamente."
+                                                    adicionarReserva reservas      
+                                        else do
+                                            adicionarReserva reservas
+                                Nothing -> do
+                                    putStrLn "Identificador de livro inválido. Por favor, tente novamente."
+                                    adicionarReserva reservas
+        Nothing -> do
+            putStrLn "Identificador de reserva inválido. Por favor, tente novamente."
+            putStrLn ""
+            adicionarReserva reservas
+
 
 removerReserva :: IdReserva -> [ReservaInfo] -> IO [ReservaInfo]
 removerReserva idReserva reservas = do
@@ -286,9 +301,14 @@ loopPrincipal reservas reservasfechadas = do
         "2" -> do
             putStrLn "Digite o identificador da reserva a ser removida:"
             idreservaStr <- getLine
-            let idreserva = read idreservaStr :: IdReserva
-            novaListaReservas <- removerReserva idreserva reservas
-            loopPrincipal novaListaReservas reservasfechadas
+            case readMaybe idreservaStr :: Maybe IdReserva of
+                Just idreserva -> do
+                    novaListaReservas <- removerReserva idreserva reservas
+                    loopPrincipal novaListaReservas reservasfechadas
+                Nothing -> do
+                    putStrLn ""
+                    putStrLn "Identificador de reserva inválido."
+                    loopPrincipal reservas reservasfechadas    
         "3" -> do
             putStrLn "Exibindo todos as reservas:"
             exibirReservas reservas
@@ -296,10 +316,15 @@ loopPrincipal reservas reservasfechadas = do
         "4" -> do
             putStrLn "Digite o identificador da reserva a ser fechada:"
             idreservaStr <- getLine
-            let idreserva = read idreservaStr :: IdReserva
-            novaListaReserva <- removerReservaFechada idreserva reservas reservasfechadas
-            nLR <- removerReserva idreserva reservas
-            loopPrincipal nLR novaListaReserva
+            case readMaybe idreservaStr :: Maybe IdReserva of
+                Just idreserva -> do
+                    novaListaReserva <- removerReservaFechada idreserva reservas reservasfechadas
+                    nLR <- removerReserva idreserva reservas
+                    loopPrincipal nLR novaListaReserva
+                Nothing -> do
+                    putStrLn ""
+                    putStrLn "Identificador de reserva inválido."
+                    loopPrincipal reservas reservasfechadas    
         "5" -> do
             putStrLn "Exibindo todas as reservas fechadas:"
             exibirReservasFec reservasfechadas
@@ -307,9 +332,14 @@ loopPrincipal reservas reservasfechadas = do
         "6" -> do
             putStrLn "Digite o id do aluno:"
             idalunoStr <- getLine
-            let idaluno = read idalunoStr :: IdAluno
-            reservasEspecificas idaluno reservas
-            loopPrincipal reservas reservasfechadas    
+            case readMaybe idalunoStr :: Maybe IdAluno of
+                Just idaluno -> do
+                    reservasEspecificas idaluno reservas
+                    loopPrincipal reservas reservasfechadas  
+                Nothing -> do
+                    putStrLn ""
+                    putStrLn "Identificador do aluno inválido."
+                    loopPrincipal reservas reservasfechadas
         _ -> putStrLn "Encerrando às funcionalidades de reservas."                  
             
 

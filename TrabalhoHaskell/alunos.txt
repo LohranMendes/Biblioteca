@@ -1,3 +1,5 @@
+"Aluno, 9, Wellington Rodrigues Dias, Administracao, 106400"
+"Aluno, 8, Alexandre Moraes, Ciencia da Computacao, 2012865"
 "Aluno, 7, Laila Romanoff, Pedagogia, 1032409"
 "Aluno, 6, Renan, Biblioteconomia, 1077200"
 "Aluno, 5, Luis, Medicina, 1077320"

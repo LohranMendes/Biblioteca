@@ -4,6 +4,7 @@ import Data.List.Split (splitOn)
 import System.IO
 import Data.List (any, intercalate)
 import Data.Char (isSpace)
+import Text.Read (readMaybe)
 
 type IdAluno = Int
 type NomeAluno = String
@@ -48,52 +49,64 @@ adicionarAluno :: [AlunoInfo] -> IO [AlunoInfo]
 adicionarAluno alunos = do
     putStrLn "Digite o identificador do aluno:"
     idalunoStr <- getLine
-    let idaluno = read idalunoStr :: IdAluno
-    putStrLn ""
-
-    -- Verificar se o idAluno já existe na lista carregada do arquivo
-    let alunoExistente = any (alunoTemId idaluno) alunos
-    if alunoExistente
-        then do
-            putStrLn "O identificador do aluno já existe. Tente novamente."
-            adicionarAluno alunos
-        else do
-            putStrLn "Digite o nome do aluno:"
-            nome <- getLine
+    case readMaybe idalunoStr :: Maybe IdAluno of
+        Just idaluno -> do
             putStrLn ""
 
-            putStrLn "Digite o curso do aluno:"
-            curso <- getLine
-            putStrLn ""
-
-            putStrLn "Digite o número da matrícula do aluno:"
-            numMatStr <- getLine
-            putStrLn ""
-
-            let numMat = read numMatStr :: NumMat
-
-            let numMatJaExisteNaLista = numMatJaExiste numMat alunos
-            if numMatJaExisteNaLista
+            -- Verificar se o idAluno já existe na lista carregada do arquivo
+            let alunoExistente = any (alunoTemId idaluno) alunos
+            if alunoExistente
                 then do
-                    putStrLn "O número de matrícula já existe. Tente novamente."
+                    putStrLn ""
+                    putStrLn "O identificador do aluno já existe. Tente novamente."
+                    putStrLn ""
                     adicionarAluno alunos
                 else do
-                    let novoAluno = criarAluno idaluno nome curso numMat
-                    putStrLn "Aluno adicionado:"
-                    print novoAluno
+                    putStrLn "Digite o nome do aluno:"
+                    nome <- getLine
                     putStrLn ""
 
-                    putStrLn "Deseja adicionar outro aluno? (s/n):"
-                    resposta <- getLine
+                    putStrLn "Digite o curso do aluno:"
+                    curso <- getLine
                     putStrLn ""
 
-                    let novaListaAlunos = novoAluno : alunos
-                    if resposta == "s"
-                        then adicionarAluno novaListaAlunos
-                        else do
-                            putStrLn "Aluno(s) adicionado(s)!"
-                            salvarAlunos novaListaAlunos
-                            return novaListaAlunos
+                    putStrLn "Digite o número da matrícula do aluno:"
+                    numMatStr <- getLine
+                    case readMaybe numMatStr :: Maybe NumMat of
+                        Just numMat -> do
+                            putStrLn ""
+                            let numMatJaExisteNaLista = numMatJaExiste numMat alunos
+                            if numMatJaExisteNaLista
+                                then do
+                                    putStrLn ""
+                                    putStrLn "O número de matrícula já existe. Tente novamente."
+                                    putStrLn ""
+                                    adicionarAluno alunos
+                                else do
+                                    let novoAluno = criarAluno idaluno nome curso numMat
+                                    putStrLn "Aluno adicionado:"
+                                    print novoAluno
+                                    putStrLn ""
+
+                                    putStrLn "Deseja adicionar outro aluno? (s/n):"
+                                    resposta <- getLine
+                                    putStrLn ""
+
+                                    let novaListaAlunos = novoAluno : alunos
+                                    if resposta == "s"
+                                        then adicionarAluno novaListaAlunos
+                                        else do
+                                            putStrLn "Aluno(s) adicionado(s)!"
+                                            salvarAlunos novaListaAlunos
+                                            return novaListaAlunos
+                        Nothing -> do
+                            putStrLn "Numero de matricula inválido. Por favor, tente novamente."
+                            putStrLn ""
+                            adicionarAluno alunos           
+        Nothing -> do
+            putStrLn "Identificador de aluno inválido. Por favor, tente novamente."
+            putStrLn ""
+            adicionarAluno alunos   
 
 removerAluno :: IdAluno -> [AlunoInfo] -> IO [AlunoInfo]
 removerAluno codigo alunos = do
@@ -180,9 +193,13 @@ loopPrincipal alunos = do
         "2" -> do
             putStrLn "Digite o identificador do aluno a ser removido:"
             idalunoStr <- getLine
-            let idaluno = read idalunoStr :: IdAluno
-            novaListaAlunos <- removerAluno idaluno alunos
-            loopPrincipal novaListaAlunos
+            case readMaybe idalunoStr :: Maybe IdAluno of
+                Just idaluno -> do
+                    novaListaAlunos <- removerAluno idaluno alunos
+                    loopPrincipal novaListaAlunos
+                Nothing -> do
+                    putStrLn "Identificador de aluno inválido."
+                    loopPrincipal alunos     
         "3" -> do
             putStrLn "Exibindo todos os alunos:"
             exibirAlunos alunos
